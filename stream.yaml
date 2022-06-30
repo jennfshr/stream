@@ -1,21 +1,54 @@
-base:
+gcc:
     subtitle: Runs STREAM benchmark
+
+    variables:
+        make_options: '-O3 -mavx2 -fopenmp  -DSTREAM_ARRAY_SIZE=100000000'
+        cmake_c_compiler: gcc
+
     build:
-        source_url: 'http://www.cs.virginia.edu/stream/FTP/Code/stream.c'
-        source_path: stream.c
-        modules:
-            - "{{compilers}}"
-            - "{{mpis}}"
+        source_path: stream
+        env:
+            CC: '{{cmake_c_compiler}}'
         cmds:
-            - gcc -o stream stream.c
+            - make clean
+            - 'make OPTIONS="{{make_options}}"'
+            - 'mv xroads-stream xroads-stream-cts1-{{cmake_c_compiler}}'
 
     scheduler: slurm
     schedule:
-        nodes: 2
+        nodes: 1
+
+    run:
+        cmds:
+            - OMP_DISPLAY_AFFINITY=TRUE
+            - for x in $(seq 1 36)
+            - do
+            -   i=$(($x-1))
+            -   export GOMP_CPU_AFFINITY=0-$i
+            -   export OMP_NUM_THREADS=$x
+            -   './xroads-stream-cts1-{{cmake_c_compiler}} > stream-cts1-{{cmake_c_compiler}}-$x.log'
+            - done
+
+icc:
+
+    inherits_from: gcc
+
+    variables:
+        make_options: '-O3 -qopenmp -DSTREAM_ARRAY_SIZE=100000000 -xCORE-AVX2'
+        cmake_c_compiler: icc
+    
+    build:
+        modules: 
+            - intel/2021.3.0
+            #- intel/17.0.4
 
     run:
         modules:
-            - "{{compilers}}"
-            - "{{mpis}}"
-        cmds:
-            - "{{sched.test_cmd}} ./stream"
+            - intel/2021.3.0
+
+icx:
+
+    inherits_from: icc
+
+    variables:
+        cmake_c_compiler: icx
