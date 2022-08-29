@@ -85,12 +85,7 @@ _base:
 
     build:
         source_path: stream
-
-    run:
-        env:
-            CC: '{{compilers.cc}}'
-            OMP_NUM_THREADS: '{{omp_num_threads}}'
-            GOMP_CPU_AFFINITY: '0-{{omp_num_threads-1}}'
+        on_nodes: true
         preamble:
             - 'module load friendly-testing'
             - 'module load {{compilers.name}}/{{compilers.version}}'
@@ -99,17 +94,11 @@ _base:
             - '# this grabs "free" memory from vmstat'
             - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
             - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
-            - 'echo "memory=$memory"'
-            - 'echo "N_MEM=$N_MEM"'
             - '# this grabs cache size from vmstat'
             - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
             - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
-            - 'echo "cache_size=$cache_size"'
-            - 'echo "N_CACHE=$N_CACHE"'
             - 'NTIMES=${NTIMES:=10}'
-            - 'echo "NTIMES=$NTIMES"'
             - 'N=${N_CACHE:=10000000}'
-            - 'echo "N=${N}"'
             - ''
             - 'if [[ "{{compilers.name}}" =\~ intel ]] ; then '
             - '   PAV_CC={{compilers.cc}}'
@@ -126,9 +115,34 @@ _base:
             - 'make clean'
             - 'make {{target}} || exit 1'
             - '[ -x {{target}} ] || exit 1'
+
+    run:
+        env:
+            CC: '{{compilers.cc}}'
+            OMP_NUM_THREADS: '{{omp_num_threads}}'
+            GOMP_CPU_AFFINITY: '0-{{omp_num_threads-1}}'
+        preamble:
+            - 'module load friendly-testing'
+            - 'module load {{compilers.name}}/{{compilers.version}}'
+            - 'module load {{mpis.name}}/{{mpis.version}}'
+        cmds:
+            - '# this grabs "free" memory from vmstat'
+            - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
+            - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
+            - '# this grabs cache size from vmstat'
+            - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
+            - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
+            - 'NTIMES=${NTIMES:=10}'
+            - 'N=${N_CACHE:=10000000}'
+            - 'echo "memory=$memory"'
+            - 'echo "N_MEM=$N_MEM"'
+            - 'echo "cache_size=$cache_size"'
+            - 'echo "N_CACHE=$N_CACHE"'
             - 'echo "MEMORY REPORTED is $memory; MEMORY REQUESTED is $N"'
             - 'echo "GOMP_CPU_AFFINITY: $GOMP_CPU_AFFINITY"'
             - 'echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"'
+            - 'echo "NTIMES=$NTIMES"'
+            - 'echo "N=${N}"'
             - './{{target}} > $(hostname -s)_stream'
 
     result_parse:
@@ -207,7 +221,7 @@ hsw_xrds:
             - { name: "intel-classic", version: "2022.0.2", pe_env: "PrgEnv-intel", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
             - { name: "intel", version: "2022.0.2", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
             - { name: "intel-oneapi", version: "2022.0.2", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
-            - { name: "gcc", version: "11.2.0", pe_env: "PrgEnv-gnu", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "-xCORE-AVX2" }
+            - { name: "gcc", version: "11.2.0", pe_env: "PrgEnv-gnu", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "" }
             - { name: "cce", version: "12.0.3", pe_env: "PrgEnv-cray", cc: "cc", cxx: "CC", fc: "ftn", arch_opt: "" }
 
     build:
