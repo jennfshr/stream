@@ -78,21 +78,25 @@ _base:
             STREAM
             XRDS DOCUMENTATION: 4 x (45 MiB cache / processor) x (2 processors) / (3 arrays) / (8 bytes / element) = 15 Mi elements = 15000000
             *****************************************************************************************************
-            4 * ( 40M * 2 ) / 3 ARRAYS / 8 Bytes/element = 13400000 
             HASWELL: Intel(R) Xeon(R) CPU E5-2698 v3 @ 2.30GHz
             CACHE: 40M
             SOCKETS: 2
+            4 * ( 40M * 2 ) / 3 ARRAYS / 8 Bytes/element =  13.4 Mi elements = 13400000 
             *****************************************************************************************************
-            4 * ( 45M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 15 Mi elements
             BROADWELL: Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz
             CACHE: 45M
             SOCKETS: 2
+            4 * ( 45M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 15.0 Mi elements = 15000000
             *****************************************************************************************************
-            4 x (107.52M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 35.84 Mi elements = 35840000
             SAPPHIRE RAPIDS (DDR5): Intel(R) Xeon(R) Platinum 8480+
             CACHE: 107.52M
             SOCKETS: 2
+            4 x (107.52M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 35.84 Mi elements = 35840000
+            *****************************************************************************************************
             SAPPHIRE RAPIDS (HBM): ??
+            CACHE: 115.2M
+            SOCKETS: 2
+            4 x (115.2M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 38.4 Mi elements = 38400000
             
     scheduler: slurm
     schedule:
@@ -112,13 +116,13 @@ _base:
             - 'module load {{compilers.name}}/{{compilers.version}}'
             - 'module load {{mpis.name}}/{{mpis.version}}'
         cmds:
-            - '# this grabs "free" memory from vmstat'
 ## replace the following inline calculations for static variables settings per arch type, where arch is haswell, broadwell, sapphire rapids
-#            - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
-#            - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
-#            - '# this grabs cache size from vmstat'
-#            - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
-#            - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
+            - '# this grabs "free" memory from vmstat'
+            - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
+            - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
+            - '# this grabs cache size from vmstat'
+            - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
+            # - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
             - 'N_CACHE={{stream_array_size}}'
             - 'NTIMES=${NTIMES:=10}'
             - 'N=${N_CACHE:=10000000}'
@@ -149,12 +153,14 @@ _base:
             - 'module load {{compilers.name}}/{{compilers.version}}'
             - 'module load {{mpis.name}}/{{mpis.version}}'
         cmds:
+## replace the following inline calculations for static variables settings per arch type, where arch is haswell, broadwell, sapphire rapids
             - '# this grabs "free" memory from vmstat'
             - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
             - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
             - '# this grabs cache size from vmstat'
             - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
-            - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
+            # - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
+            - 'N_CACHE={{stream_array_size}}'
             - 'NTIMES=${NTIMES:=10}'
             - 'N=${N_CACHE:=10000000}'
             - 'echo "memory=$memory"'
@@ -178,6 +184,8 @@ _base:
                 const: '{{omp_num_threads}}'
             gomp_cpu_affinity:
                 const: '0-{{omp_num_threads-1}}'
+            stream_cache_array_size:
+                const: '{{stream_array_size}}'
         regex:
             result:
                 regex: 'Solution Validates:'
@@ -236,7 +244,7 @@ hsw_xrds:
         "{{sys_os.name}}{{sys_os.version}}": [ cle7.0 ]
     variables:
         arch: "hsw"
-        stream_array_size: ""
+        stream_array_size: 13400000
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32]
         mpis:
@@ -288,7 +296,7 @@ cts1_xrds:
         "{{sys_os.name}}{{sys_os.version}}": [ toss3 ]
     variables:
         arch: "cts1"
-        stream_array_size: ""
+        stream_array_size: 15000000
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32, 36]
         omp_places: [cores, sockets]
@@ -301,13 +309,13 @@ cts1_xrds:
             - { name: "intel-oneapi", version: "2021.2.0", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
             - { name: "gcc", version: "10.3.0", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "-xCORE-AVX2" }
 
-spr_xrds:
+spr_ddr5_xrds:
     inherits_from: _base
     only_if:
         "{{sys_name}}": [ darwin ]
     variables:
         arch: "spr"
-        stream_array_size: ""
+        stream_array_size: 35840000
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
         omp_places: [cores, sockets]
