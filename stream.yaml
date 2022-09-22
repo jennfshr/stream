@@ -100,7 +100,8 @@ _base:
             
     scheduler: slurm
     schedule:
-        nodes: 1
+        nodes: '10' # 'ALL'
+        tasks_per_node: 1
         share_allocation: false
 
     permute_on: 
@@ -116,16 +117,8 @@ _base:
             - 'module load {{compilers.name}}/{{compilers.version}}'
             - 'module load {{mpis.name}}/{{mpis.version}}'
         cmds:
-## replace the following inline calculations for static variables settings per arch type, where arch is haswell, broadwell, sapphire rapids
-            - '# this grabs "free" memory from vmstat'
-            - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
-            - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
-            - '# this grabs cache size from vmstat'
-            - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
-            # - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
-            - 'N_CACHE={{stream_array_size}}'
             - 'NTIMES=${NTIMES:=10}'
-            - 'N=${N_CACHE:=10000000}'
+            - 'N={{stream_array_size}}'
             - ''
             - 'if [[ "{{compilers.name}}" =\~ intel ]] ; then '
             - '   PAV_CC={{compilers.cc}}'
@@ -153,26 +146,23 @@ _base:
             - 'module load {{compilers.name}}/{{compilers.version}}'
             - 'module load {{mpis.name}}/{{mpis.version}}'
         cmds:
-## replace the following inline calculations for static variables settings per arch type, where arch is haswell, broadwell, sapphire rapids
-            - '# this grabs "free" memory from vmstat'
-            - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
-            - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
-            - '# this grabs cache size from vmstat'
-            - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
-            # - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
-            - 'N_CACHE={{stream_array_size}}'
             - 'NTIMES=${NTIMES:=10}'
-            - 'N=${N_CACHE:=10000000}'
-            - 'echo "memory=$memory"'
-            - 'echo "N_MEM=$N_MEM"'
-            - 'echo "cache_size=$cache_size"'
-            - 'echo "N_CACHE=$N_CACHE"'
-            - 'echo "MEMORY REPORTED is $memory; MEMORY REQUESTED is $N"'
+            - 'N={{stream_array_size}}'
             - 'echo "GOMP_CPU_AFFINITY: $GOMP_CPU_AFFINITY"'
             - 'echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"'
             - 'echo "NTIMES=$NTIMES"'
             - 'echo "N=${N}"'
-            - './{{target}} > $(hostname -s)_stream'
+            - 'count=0'
+            - 'for node in $(scontrol show hostname)'
+            - 'do'
+            - '  srun -w $node -N1 -n{{sched.tasks_per_node}} ./{{target}} &>$(hostname -s)_stream &'
+            - '  count=$(expr $count + 1)'
+            - '  if [ $(expr $count % 20) -eq "0" ]'
+            - '  then'
+            - '    sleep 5'
+            - '  fi'
+            - 'done'
+            - 'wait'
 
     result_parse:
         constant:
@@ -192,15 +182,6 @@ _base:
                 action: store_true
                 files: '*stream'
                 per_file: all
-            N_CACHE:
-                regex: 'N_CACHE=(.*)'
-                action: store
-            N_MEM:
-                regex: 'N_MEM=(.*)'
-                action: store    
-            memory:
-                regex: 'memory=(.*)'
-                action: store
             ARRAY_SIZE:
                 regex: 'N=(.*)'
                 action: store
@@ -248,13 +229,13 @@ hsw_xrds:
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32]
         mpis:
-            - { name: "cray-mpich", version: "7.7.18", mpicc: "cc", mpicxx: "CC", mpifc: "ftn" }
+            - { name: "cray-mpich", version: "7.7.20", mpicc: "cc", mpicxx: "CC", mpifc: "ftn" }
         compilers:
-            - { name: "intel-classic", version: "2022.0.2", pe_env: "PrgEnv-intel", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel", version: "2022.0.2", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel-oneapi", version: "2022.0.2", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
+            - { name: "intel-classic", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
+            - { name: "intel", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
+            - { name: "intel-oneapi", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
             - { name: "gcc", version: "11.2.0", pe_env: "PrgEnv-gnu", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "" }
-            - { name: "cce", version: "12.0.3", pe_env: "PrgEnv-cray", cc: "cc", cxx: "CC", fc: "ftn", arch_opt: "" }
+            - { name: "cce", version: "14.0.0", pe_env: "PrgEnv-cray", cc: "cc", cxx: "CC", fc: "ftn", arch_opt: "" }
 
     build:
         preamble:
