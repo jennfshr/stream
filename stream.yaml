@@ -325,6 +325,38 @@ spr_ddr5_xrds:
         compilers:
             - { name: "intel-classic", version: "2022.1.0", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
             - { name: "intel-hybrid", version: "2022.1.0", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
+    schedule:
+      partition: 'crossroads-spr'
+
+    build:
+        preamble:
+            - 'module load {{compilers.name}}/{{compilers.version}}'
+            - 'module load {{mpis.modulefile}}'
+
+    run:
+        preamble:
+            - 'module load {{compilers.name}}/{{compilers.version}}'
+            - 'module load {{mpis.modulefile}}'
+
+spr_hbm_xrds:
+    inherits_from: _base
+    only_if:
+        "{{sys_name}}": [ darwin ]
+    variables:
+        arch: "spr"
+        stream_array_size: 38400000
+        target: "xrds-stream.exe"
+        omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        omp_places: [cores, sockets]
+        omp_proc_bind: [true]
+        mpis:
+            - { name: "openmpi", version: "3.1.6", mpicc: "mpicc", mpicxx: "mpic++", mpifc: "mpif90", modulefile: "openmpi-3.1.6-{{compilers.name}}_{{compilers.version}}" }
+        compilers:
+            - { name: "intel-classic", version: "2022.1.0", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
+            - { name: "intel-hybrid", version: "2022.1.0", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
+
+    schedule:
+      partition: 'crossroads-spr-hbm'
 
     build:
         preamble:
