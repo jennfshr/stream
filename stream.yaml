@@ -73,6 +73,27 @@ _base:
                  will override the default size of 10M with a new size of 100M elements
                  per array.
 
+            STREAM ARRAY SIZE CALCULATIONS:
+            ###############
+            STREAM
+            XRDS DOCUMENTATION: 4 x (45 MiB cache / processor) x (2 processors) / (3 arrays) / (8 bytes / element) = 15 Mi elements = 15000000
+            *****************************************************************************************************
+            4 * ( 40M * 2 ) / 3 ARRAYS / 8 Bytes/element = 13400000 
+            HASWELL: Intel(R) Xeon(R) CPU E5-2698 v3 @ 2.30GHz
+            CACHE: 40M
+            SOCKETS: 2
+            *****************************************************************************************************
+            4 * ( 45M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 15 Mi elements
+            BROADWELL: Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz
+            CACHE: 45M
+            SOCKETS: 2
+            *****************************************************************************************************
+            4 x (107.52M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 35.84 Mi elements = 35840000
+            SAPPHIRE RAPIDS (DDR5): Intel(R) Xeon(R) Platinum 8480+
+            CACHE: 107.52M
+            SOCKETS: 2
+            SAPPHIRE RAPIDS (HBM): ??
+            
     scheduler: slurm
     schedule:
         nodes: 1
@@ -92,11 +113,13 @@ _base:
             - 'module load {{mpis.name}}/{{mpis.version}}'
         cmds:
             - '# this grabs "free" memory from vmstat'
-            - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
-            - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
-            - '# this grabs cache size from vmstat'
-            - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
-            - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
+## replace the following inline calculations for static variables settings per arch type, where arch is haswell, broadwell, sapphire rapids
+#            - "memory=$(vmstat -S K | tail -n1 | awk '{print $4}')"
+#            - 'N_MEM=$( bc <<< "0.6 * $memory / 3" )'
+#            - '# this grabs cache size from vmstat'
+#            - "cache_size=$(vmstat -S K | tail -n1 | awk '{print $6}')"
+#            - 'N_CACHE=$( bc <<< "4 * $cache_size" )'
+            - 'N_CACHE={{stream_array_size}}'
             - 'NTIMES=${NTIMES:=10}'
             - 'N=${N_CACHE:=10000000}'
             - ''
@@ -213,6 +236,7 @@ hsw_xrds:
         "{{sys_os.name}}{{sys_os.version}}": [ cle7.0 ]
     variables:
         arch: "hsw"
+        stream_array_size: ""
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32]
         mpis:
@@ -264,6 +288,7 @@ cts1_xrds:
         "{{sys_os.name}}{{sys_os.version}}": [ toss3 ]
     variables:
         arch: "cts1"
+        stream_array_size: ""
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32, 36]
         omp_places: [cores, sockets]
@@ -282,6 +307,7 @@ spr_xrds:
         "{{sys_name}}": [ darwin ]
     variables:
         arch: "spr"
+        stream_array_size: ""
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
         omp_places: [cores, sockets]
