@@ -155,7 +155,7 @@ _base:
             - 'count=0'
             - 'for node in $(scontrol show hostname)'
             - 'do'
-            - '  srun -w $node -N1 -n{{sched.tasks_per_node}} ./{{target}} &>$(hostname -s)_stream &'
+            - '  srun -w $node -N1 -n{{sched.tasks_per_node}} ./{{target}} &>${node}_stream &'
             - '  count=$(expr $count + 1)'
             - '  if [ $(expr $count % 20) -eq "0" ]'
             - '  then'
