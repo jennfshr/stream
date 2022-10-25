@@ -110,7 +110,7 @@ _base:
         - omp_num_threads
 
     build:
-        source_path: stream
+        source_path: stream/src
         on_nodes: true
         preamble:
             - 'module load friendly-testing'
