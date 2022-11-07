@@ -32,7 +32,7 @@ _base:
         Speed Network backbone.
 
         INSTRUCTIONS:
-       
+
              1) STREAM requires different amounts of memory to run on different
                   systems, depending on both the system cache size(s) and the
                   granularity of the system timer.
@@ -56,7 +56,7 @@ _base:
                       granularity.  20 "ticks" at 10 ms/tic is 200 milliseconds.
                       If the chip is capable of 10 GB/s, it moves 2 GB in 200 msec.
                       This means the each array must be at least 1 GB, or 128M elements.
-       
+
              Version 5.10 increases the default array size from 2 million
                  elements to 10 million elements in response to the increasing
                  size of L3 caches.  The new default size is large enough for caches
@@ -65,7 +65,7 @@ _base:
                  to "ssize_t", which allows array indices >2^32 (4 billion)
                  on properly configured 64-bit systems.  Additional compiler options
                  (such as "-mcmodel=medium") may be required for large memory runs.
-       
+
              Array size can be set at compile time without modifying the source
                  code for the (many) compilers that support preprocessor definitions
                  on the compile line.  E.g.,
@@ -81,12 +81,17 @@ _base:
             HASWELL: Intel(R) Xeon(R) CPU E5-2698 v3 @ 2.30GHz
             CACHE: 40M
             SOCKETS: 2
-            4 * ( 40M * 2 ) / 3 ARRAYS / 8 Bytes/element =  13.4 Mi elements = 13400000 
+            4 * ( 40M * 2 ) / 3 ARRAYS / 8 Bytes/element =  13.4 Mi elements = 13400000
             *****************************************************************************************************
             BROADWELL: Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz
             CACHE: 45M
             SOCKETS: 2
             4 * ( 45M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 15.0 Mi elements = 15000000
+            *****************************************************************************************************
+            ROME: AMD EPYC 7H12 64-Core Processor
+            CACHE: 256M
+            SOCKETS: 2
+            4 * ( 256M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 85.33 Mi elements = 85333333
             *****************************************************************************************************
             SAPPHIRE RAPIDS (DDR5): Intel(R) Xeon(R) Platinum 8480+
             CACHE: 107.52M
@@ -97,20 +102,20 @@ _base:
             CACHE: 115.2M
             SOCKETS: 2
             4 x (115.2M * 2 ) / 3 ARRAYS / 8 BYTES/ELEMENT = 38.4 Mi elements = 38400000
-            
+
     scheduler: slurm
     schedule:
         nodes: 'all' # 'ALL'
         tasks_per_node: 1
         share_allocation: false
 
-    permute_on: 
+    permute_on:
         - compilers
         - mpis
         - omp_num_threads
 
     build:
-        source_path: stream
+        source_path: stream/src
         on_nodes: true
         preamble:
             - 'module load friendly-testing'
@@ -289,6 +294,60 @@ cts1_xrds:
             - { name: "intel", version: "2021.2.0", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
             - { name: "intel-oneapi", version: "2021.2.0", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
             - { name: "gcc", version: "10.3.0", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "-xCORE-AVX2" }
+
+chicoma_rome:
+    inherits_from: _base
+    only_if:
+        "{{sys_name}}": [ chicoma, chicoma2 ]
+    variables:
+        arch: "rome"
+        stream_array_size: 85333333
+        target: "xrds-stream.exe"
+        omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        omp_places: [cores, sockets]
+        omp_proc_bind: [true]
+        mpis:
+            - { name: "cray-mpich", version: "8.1.17", mpicc: "cc", mpicxx: "CC", mpifc: "ftn" }
+        compilers:
+          # - { name: "intel-classic", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
+          #  - { name: "intel", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
+          #  - { name: "intel-oneapi", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
+            - { name: "gcc", version: "11.2.0", pe_env: "PrgEnv-gnu", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "" }
+            - { name: "cce", version: "14.0.1", pe_env: "PrgEnv-cray", cc: "cc", cxx: "CC", fc: "ftn", arch_opt: "" }
+
+    build:
+        preamble:
+            - 'test_mod () {'
+            - '  mod=$1'
+            - '  module -t list 2>&1 | grep $mod &>/dev/null || exit 1'
+            - '}'
+            - 'module load friendly-testing'
+            - 'module swap PrgEnv-${PE_ENV,,} {{compilers.pe_env}}'
+            - 'test_mod {{compilers.pe_env}}'
+            - 'comp_name={{compilers.name}}'
+            - 'module unload ${comp_name} || module unload ${comp_name//-*}'
+            - 'module load {{compilers.name}}/{{compilers.version}}'
+            - 'test_mod {{compilers.name}}/{{compilers.version}}'
+            - 'module swap {{mpis.name}}/{{mpis.version}}'
+            - 'test_mod {{mpis.name}}/{{mpis.version}}'
+            - 'module -t list'
+
+    run:
+        preamble:
+            - 'test_mod () {'
+            - '  mod=$1'
+            - '  module -t list 2>&1 | grep $mod &>/dev/null || exit 1'
+            - '}'
+            - 'module load friendly-testing'
+            - 'module swap PrgEnv-${PE_ENV,,} {{compilers.pe_env}}'
+            - 'test_mod {{compilers.pe_env}}'
+            - 'comp_name={{compilers.name}}'
+            - 'module unload ${comp_name} || module unload ${comp_name//-*}'
+            - 'module load {{compilers.name}}/{{compilers.version}}'
+            - 'test_mod {{compilers.name}}/{{compilers.version}}'
+            - 'module swap {{mpis.name}}/{{mpis.version}}'
+            - 'test_mod {{mpis.name}}/{{mpis.version}}'
+            - 'module -t list'
 
 spr_ddr5_xrds:
     inherits_from: _base
