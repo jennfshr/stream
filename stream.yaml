@@ -407,3 +407,25 @@ spr_hbm_xrds:
         preamble:
             - 'module load {{compilers.name}}/{{compilers.version}}'
             - 'module load {{mpis.modulefile}}'
+
+spr_ddr5_xrds_flood:
+    inherits_from: _base
+    permute_on: num_tasks
+    only_if:
+        "{{sys_name}}": [ tycho ]
+    variables:
+        arch: "spr"
+        stream_array_size: 8000000
+        target: "xrds-stream.exe"
+        num_tasks: [1, 2, 4, 7, 8, 14, 16, 28, 56, 112]
+        #omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        #omp_places: [cores, sockets]
+        #omp_proc_bind: [true]
+    schedule:
+        tasks_per_node: '{{num_tasks}}'
+        cpus_per_task: '1'
+        
+    slurm:
+        srun_extra:
+            - '--distribution=cyclic:cyclic'
+
