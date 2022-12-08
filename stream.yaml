@@ -112,10 +112,7 @@ _base:
     build:
         source_path: stream
         on_nodes: true
-        preamble:
-            - 'module load friendly-testing'
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'module load {{mpis.name}}/{{mpis.version}}'
+        preamble: "[~{{preamble}}\n~]"
         cmds:
             - 'NTIMES=${NTIMES:=10}'
             - 'N={{stream_array_size}}'
@@ -123,12 +120,12 @@ _base:
             - 'if [[ "{{compilers.name}}" =\~ intel ]] ; then '
             - '   PAV_CC={{compilers.cc}}'
             - '   PAV_FC={{compilers.fc}}'
-            - '   PAV_CFLAGS="-O3 -ffreestanding -qopenmp -DSTREAM_ARRAY_SIZE=$N -DNTIMES=$NTIMES -mcmodel=medium {{compilers.arch_opt}}"'
+            - '   PAV_CFLAGS="-O3 -ffreestanding -qopenmp -DSTREAM_ARRAY_SIZE=$N -DNTIMES=$NTIMES -mcmodel=medium"'
             - '   PAV_FFLAGS="-O3"'
             - 'else'
             - '   PAV_CC={{compilers.cc}}'
             - '   PAV_FC={{compilers.fc}}'
-            - '   PAV_CFLAGS="-O3 -ffreestanding -fopenmp -DSTREAM_ARRAY_SIZE=$N -DNTIMES=$NTIMES {{compilers.arch_opt}}"'
+            - '   PAV_CFLAGS="-O3 -ffreestanding -fopenmp -DSTREAM_ARRAY_SIZE=$N -DNTIMES=$NTIMES"' 
             - '   PAV_FFLAGS="-O3"'
             - 'fi'
             - 'export PAV_CC PAV_FC PAV_CFLAGS PAV_FFLAGS'
@@ -141,10 +138,7 @@ _base:
             CC: '{{compilers.cc}}'
             OMP_NUM_THREADS: '{{omp_num_threads}}'
             GOMP_CPU_AFFINITY: '0-{{omp_num_threads-1}}'
-        preamble:
-            - 'module load friendly-testing'
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'module load {{mpis.name}}/{{mpis.version}}'
+        preamble: "[~{{preamble}}\n~]"
         cmds:
             - 'NTIMES=${NTIMES:=10}'
             - 'N={{stream_array_size}}'
@@ -228,48 +222,6 @@ hsw_xrds:
         stream_array_size: 13400000
         target: "xrds-stream.exe"
         omp_num_threads: [1, 2, 4, 8, 16, 32]
-        mpis:
-            - { name: "cray-mpich", version: "7.7.20", mpicc: "cc", mpicxx: "CC", mpifc: "ftn" }
-        compilers:
-            - { name: "intel-classic", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel-oneapi", version: "2022.1.0", pe_env: "PrgEnv-intel", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
-            - { name: "gcc", version: "11.2.0", pe_env: "PrgEnv-gnu", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "" }
-            - { name: "cce", version: "14.0.0", pe_env: "PrgEnv-cray", cc: "cc", cxx: "CC", fc: "ftn", arch_opt: "" }
-
-    build:
-        preamble:
-            - 'test_mod () {'
-            - '  mod=$1'
-            - '  module -t list 2>&1 | grep $mod &>/dev/null || exit 1'
-            - '}'
-            - 'module load friendly-testing'
-            - 'module swap PrgEnv-${PE_ENV,,} {{compilers.pe_env}}'
-            - 'test_mod {{compilers.pe_env}}'
-            - 'comp_name={{compilers.name}}'
-            - 'module unload ${comp_name} || module unload ${comp_name//-*}'
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'test_mod {{compilers.name}}/{{compilers.version}}'
-            - 'module swap {{mpis.name}}/{{mpis.version}}'
-            - 'test_mod {{mpis.name}}/{{mpis.version}}'
-            - 'module -t list'
-
-    run:
-        preamble:
-            - 'test_mod () {'
-            - '  mod=$1'
-            - '  module -t list 2>&1 | grep $mod &>/dev/null || exit 1'
-            - '}'
-            - 'module load friendly-testing'
-            - 'module swap PrgEnv-${PE_ENV,,} {{compilers.pe_env}}'
-            - 'test_mod {{compilers.pe_env}}'
-            - 'comp_name={{compilers.name}}'
-            - 'module unload ${comp_name} || module unload ${comp_name//-*}'
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'test_mod {{compilers.name}}/{{compilers.version}}'
-            - 'module swap {{mpis.name}}/{{mpis.version}}'
-            - 'test_mod {{mpis.name}}/{{mpis.version}}'
-            - 'module -t list'
 
 cts1_xrds:
     inherits_from: _base
@@ -282,42 +234,18 @@ cts1_xrds:
         omp_num_threads: [1, 2, 4, 8, 16, 32, 36]
         omp_places: [cores, sockets]
         omp_proc_bind: [true]
-        mpis:
-            - { name: "openmpi", version: "4.1.1", mpicc: "mpicc", mpicxx: "mpic++", mpifc: "mpifort", arch_opt: "-xCORE-AVX2" }
-        compilers:
-            - { name: "intel-classic", version: "2021.2.0", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel", version: "2021.2.0", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel-oneapi", version: "2021.2.0", cc: "icx", cxx: "icpx", fc: "ifx", arch_opt: "-xCORE-AVX2" }
-            - { name: "gcc", version: "10.3.0", cc: "gcc", cxx: "g++", fc: "gfortran", arch_opt: "-xCORE-AVX2" }
 
 spr_ddr5_xrds:
     inherits_from: _base
     only_if:
-        "{{sys_name}}": [ darwin ]
+        "{{sys_name}}": [ rocinante, crossroads, razorback, tycho ]
     variables:
         arch: "spr"
         stream_array_size: 35840000
         target: "xrds-stream.exe"
-        omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
-        omp_places: [cores, sockets]
+        omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 110, 220]
+        omp_places: [cores,sockets]
         omp_proc_bind: [true]
-        mpis:
-            - { name: "openmpi", version: "3.1.6", mpicc: "mpicc", mpicxx: "mpic++", mpifc: "mpif90", modulefile: "openmpi-3.1.6-{{compilers.name}}_{{compilers.version}}" }
-        compilers:
-            - { name: "intel-classic", version: "2022.1.0", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel-hybrid", version: "2022.1.0", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-    schedule:
-      partition: 'crossroads-spr'
-
-    build:
-        preamble:
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'module load {{mpis.modulefile}}'
-
-    run:
-        preamble:
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'module load {{mpis.modulefile}}'
 
 spr_hbm_xrds:
     inherits_from: _base
@@ -330,21 +258,6 @@ spr_hbm_xrds:
         omp_num_threads: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
         omp_places: [cores, sockets]
         omp_proc_bind: [true]
-        mpis:
-            - { name: "openmpi", version: "3.1.6", mpicc: "mpicc", mpicxx: "mpic++", mpifc: "mpif90", modulefile: "openmpi-3.1.6-{{compilers.name}}_{{compilers.version}}" }
-        compilers:
-            - { name: "intel-classic", version: "2022.1.0", cc: "icc", cxx: "icpc", fc: "ifort", arch_opt: "-xCORE-AVX2" }
-            - { name: "intel-hybrid", version: "2022.1.0", cc: "icx", cxx: "icpx", fc: "ifort", arch_opt: "-xCORE-AVX2" }
 
     schedule:
       partition: 'crossroads-spr-hbm'
-
-    build:
-        preamble:
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'module load {{mpis.modulefile}}'
-
-    run:
-        preamble:
-            - 'module load {{compilers.name}}/{{compilers.version}}'
-            - 'module load {{mpis.modulefile}}'
