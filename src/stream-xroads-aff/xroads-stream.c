@@ -42,6 +42,10 @@
 #define STREAM_TYPE double
 #endif
 
+#ifdef _OPENMP
+void bind_threads_to_cores();
+#endif
+
 #define STREAM_RESTRICT __restrict__
 
 static STREAM_TYPE* STREAM_RESTRICT a;
@@ -124,9 +128,16 @@ int main() {
     printf ("Number of Threads counted = %i\n",k);
 #endif
 
+#ifdef _OPENMP
+    bind_threads_to_cores();
+#endif
+
+
     printf("Populating values and performing first touch ... \n");
     /* Get initial value for system clock. */
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
     for (j=0; j<STREAM_ARRAY_SIZE; j++) {
 	    a[j] = 1.0;
 	    b[j] = 2.0;
@@ -146,7 +157,9 @@ int main() {
     }
 
     t = mysecond();
-#pragma omp parallel for
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
     for (j = 0; j < STREAM_ARRAY_SIZE; j++)
 		a[j] = 2.0E0 * a[j];
     t = 1.0E6 * (mysecond() - t);
@@ -170,28 +183,36 @@ int main() {
     for (k=0; k < NTIMES; k++)
 	{
 		times[0][k] = mysecond();
-		#pragma omp parallel for
+		#ifdef _OPENMP
+		#pragma omp parallel for schedule(static)
+		#endif
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
 			c[j] = a[j];
 		}
 		times[0][k] = mysecond() - times[0][k];
 	
 		times[1][k] = mysecond();
-		#pragma omp parallel for
+		#ifdef _OPENMP
+		#pragma omp parallel for schedule(static)
+		#endif
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
 	    	b[j] = scalar*c[j];
 	    }
 		times[1][k] = mysecond() - times[1][k];
 	
 		times[2][k] = mysecond();
-		#pragma omp parallel for
+		#ifdef _OPENMP
+		#pragma omp parallel for schedule(static)
+		#endif
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
 	    	c[j] = a[j]+b[j];
 	    }
 		times[2][k] = mysecond() - times[2][k];
 	
 		times[3][k] = mysecond();
-		#pragma omp parallel for
+		#ifdef _OPENMP
+		#pragma omp parallel for schedule(static)
+		#endif
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) {
 	    	a[j] = b[j]+scalar*c[j];
 	    }

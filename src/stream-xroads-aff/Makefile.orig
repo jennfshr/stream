@@ -1,0 +1,13 @@
+CFLAGS=-O3 -xCORE-AVX512 -qopenmp -DSTREAM_ARRAY_SIZE=4500000000 -diag-disable=10441
+EXE=xroads-stream-avx512
+CC=icc
+
+$(EXE): xroads-stream.c Makefile sched.c
+	$(CC) $(CFLAGS) -c xroads-stream.c
+	$(CC) $(CFLAGS) -c sched.c
+	$(CC) $(CFLAGS) -o $(EXE) xroads-stream.o sched.o
+
+clean:
+	rm -f $(EXE)
+	rm -f *.o
+
